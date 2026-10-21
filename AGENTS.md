@@ -2,6 +2,24 @@
 
 Read this first. It is the context handover for the Concept VR3125 reverse-engineering project.
 
+## SESSION START - do these three things before anything else
+
+1. **Run `make start`** (or `bash scripts/doctor.sh` then read the tail of
+   `docs/JOURNAL.md`). It prints: toolchain status, whether the tree is clean and
+   pushed, whether tests pass, which credentials/artifacts exist (credentials are
+   masked), whether the robot answers, and **the next command to run**.
+2. **Read `docs/HANDOFF.md`** (narrative state, open questions, gotchas) and the tail of
+   `docs/JOURNAL.md` (what actually happened, in order).
+3. **Check `git status` / `git log --oneline -5`.** If the tree is dirty, the previous
+   session stopped mid-step - finish that step before starting a new one.
+
+Then continue with the "Next steps" section at the bottom of this file. Do not
+re-derive the protocol from scratch: it is already encoded in `src/popelka/`, with
+confidence levels marked in `docs/RE.md`.
+
+If the user switches machines mid-task: `git pull` on the new machine, and the same
+three steps above apply. `AGENTS.md` is in the repo, so it travels with the code.
+
 ## Project in one paragraph
 
 The user owns a **Concept VR3125 2v1 Perfect Clean Laser** robot vacuum (3300 Pa, LiDAR

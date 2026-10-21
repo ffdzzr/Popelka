@@ -52,3 +52,12 @@ entry per meaningful step. Newest at the bottom.
 ### Still waiting on the user
 
 APK, `.env` credentials, robot IP, OK to re-sign the app.
+
+## 2026-10-21 - session 3 (Termux) - make a session start verifiable
+
+* Added `scripts/doctor.sh` + `make doctor` / `make start`: prints toolchain status,
+  repo cleanliness, unpushed commits, test result, which credentials/artifacts exist
+  (masked), robot reachability (ping + TCP 6668), and the **next command to run**.
+* `AGENTS.md` now opens with a SESSION START checklist (make start -> read HANDOFF +
+  journal tail -> check git status), so a new session on any machine starts from
+  verified state instead of guessing.

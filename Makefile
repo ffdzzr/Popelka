@@ -5,7 +5,7 @@ SHELL := /bin/bash
 PY := uv run python
 .DEFAULT_GOAL := help
 
-.PHONY: help setup test lint scan cloud-dump capture resign replay check-secrets audit hooks vault-push vault-pull push journal
+.PHONY: help setup start doctor test lint scan cloud-dump capture resign replay check-secrets audit hooks vault-push vault-pull push journal
 
 help: ## show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -13,6 +13,15 @@ help: ## show this help
 setup: ## install the toolchain (Linux PC: jadx, mitmproxy, adb, tshark) + leak guard
 	@bash scripts/setup_linux.sh
 	@bash scripts/install_hooks.sh
+
+doctor: ## check the environment, repo state and next step
+	@bash scripts/doctor.sh
+
+start: ## session start: doctor + journal tail + repo state
+	@bash scripts/doctor.sh
+	@echo
+	@echo "== journal tail =="
+	@tail -n 25 docs/JOURNAL.md
 
 test: ## run the test suite
 	@uv run pytest -q
