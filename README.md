@@ -1,5 +1,21 @@
 # Popelka
 
+## About
+
+This project is to tinker with robotic vacuum cleaner **Concept VR3125**
+
+## Ideas
+
+- Make my own UI
+
+- Change sounds to R2D2, maybe some angry Austrian painter
+
+- Get rid of the app that comes with it and enjoy privacy plus own features
+
+---
+
+## vibe coded docs:
+
 Reverse-engineering toolkit for a **Concept VR3125** robot vacuum (Concept VR3125
 2v1 Perfect Clean Laser).
 
