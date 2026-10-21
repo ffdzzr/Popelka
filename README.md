@@ -82,6 +82,9 @@ uv run popelka map map.bin --out map.pgm
 
 ## Documentation
 
+* [`AGENTS.md`](AGENTS.md) - auto-loaded working notes for OpenCode/agents in this repo.
+* [`docs/HANDOFF.md`](docs/HANDOFF.md) - **session handover**: findings, open questions,
+  what the user still has to provide, and the exact next commands.
 * [`docs/RE.md`](docs/RE.md) - findings, protocol notes, and the step-by-step
   plan for your specific robot.
 * [`docs/ROADMAP.md`](docs/ROADMAP.md) - what to try next, in order.
