@@ -66,7 +66,11 @@ def main() -> int:
     devices = account.devices()
     (out / "devices.json").write_text(json.dumps(devices, indent=2))
     for d in devices:
-        print(f"  {d.get('id')}  {d.get('name')}  local_key={d.get('local_key', '-')}  ip={d.get('ip', '-')}")
+        # The local key is a credential: keep the full value in the gitignored
+        # data/ directory, but never print it.
+        key = d.get("local_key", "")
+        masked = f"{key[:4]}...{key[-2:]}" if len(key) > 8 else ("set" if key else "-")
+        print(f"  {d.get('id')}  {d.get('name')}  local_key={masked}  ip={d.get('ip', '-')}")
 
     device = pick_device(devices, args.device)
     if device is None:

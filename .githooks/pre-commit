@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+if ! bash "$ROOT/scripts/check_secrets.sh"; then
+  echo
+  echo "commit aborted: possible secret or capture staged."
+  echo "If this is a false positive, adjust scripts/check_secrets.sh."
+  exit 1
+fi

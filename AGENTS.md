@@ -43,18 +43,28 @@ src/popelka/commands.py  builders: wake, sync bundle, room/zone/spot, fault reco
 src/popelka/maps.py      LZ4 map-file decoder (header inferred, inferences reported)
 src/popelka/cloud.py     Tuya IoT login (grant_type=1 + signed v2.0), devices, DPs, maps
 src/popelka/tuya.py      local transport (tinytuya) + thin cloud client
+src/popelka/replay.py    send real commands to the robot (python -m popelka.replay ...)
 src/popelka/cli.py       popelka frames|build|map|dps|faults
 tools/apk_scan.py        DEX string mining -> Tuya app key/secret, hosts, DP names
 tools/cloud_dump.py      dump devices, live DPs, specs, map list + downloads
 tools/mitm_dp15.py       mitmproxy addon: decodes every command_trans payload live
 tools/decode_payloads.py decode a file of captured hex/base64 payloads
 scripts/setup_linux.sh   PC toolchain setup
+scripts/resign_apk.sh    re-sign the app so it trusts mitm's CA (Android 7+ workaround)
+scripts/capture.sh       run mitmproxy with the DP15 decoder
+scripts/vault.sh         encrypted pack/unpack for moving secrets between machines
+scripts/check_secrets.sh + scripts/secret_patterns.txt   leak guard (pre-commit)
+scripts/install_hooks.sh install the leak guard as a git pre-commit hook
+Makefile                 one command per step: make help
 docs/RE.md               protocol notes (see the provenance warning below)
 docs/ROADMAP.md          phased plan
 docs/HANDOFF.md          full session context: findings, open questions, next steps
+docs/WORKFLOW.md         phone <-> PC <-> Termux loop, secret hygiene rules
+docs/JOURNAL.md          append-only log of what was actually done (read the tail!)
 ```
 
-Working commands: `uv sync` then `uv run pytest -q`, `uv run popelka <cmd>`.
+Working commands: `uv sync` then `uv run pytest -q`, `uv run popelka <cmd>`,
+`make help` for the task list.
 
 ## Protocol summary (PROVENANCE WARNING)
 
@@ -113,10 +123,16 @@ python tools/decode_payloads.py capture.txt
 * Every reverse-engineered fact goes into `docs/RE.md` **with its provenance**
   (captured here vs. inherited from upstream work) and into `src/popelka/dp.py` if it is a
   datapoint.
-* Never commit credentials, APKs, captures or map dumps (`.env`, `data/`, `*.apk`,
-  `flows.mitm`, `captures/` are gitignored).
+* Never commit credentials, APKs, captures or map dumps. `.env`, `data/`, `private/`,
+  `vault/`, `captures/`, `*.apk`, `*.bin` are gitignored **and** blocked by the pre-commit
+  hook (`scripts/install_hooks.sh` once per machine). Move such artifacts between machines
+  with `scripts/vault.sh` (encrypted, LAN transfer only).
+* Mask credentials in any output you show the user (the local key is masked in
+  `tools/cloud_dump.py` stdout; keep it that way).
 * Hardware safety: the robot moves and mops for real. Verify coordinate scaling against a
   known landmark before sending zone/spot commands, and keep the physical remote within
   reach. Test water-level commands with the tank removed first.
 * Push to `main` after each meaningful step; the user wants the work visible on GitHub.
+* Append a short entry to `docs/JOURNAL.md` after each meaningful step - it is how the
+  next session (on any machine) knows where things stand.
 * User writes in English; the app UI is Czech. Keep docs in English.

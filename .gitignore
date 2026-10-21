@@ -15,3 +15,7 @@ data/
 *.apk
 flows.mitm
 captures/
+vault/
+private/
+*.bin
+*.pgm

@@ -152,8 +152,40 @@ cmd `0x4C`, and finally the P2P protocol for the live path.
 ## 7. Git / workflow
 
 * Remote: `git@github.com:ffdzzr/Popelka.git`, branch `main`, SSH key authorised.
-* Push after each meaningful step.
-* Secrets/captures never in git: `.env`, `data/`, `*.apk`, `flows.mitm`, `captures/`.
+* Push after each meaningful step (`make push MESSAGE="..."`).
+* **Secrets never in git.** `.env`, `data/`, `private/`, `vault/`, `captures/`, `*.apk`,
+  `*.bin` are gitignored *and* blocked by the pre-commit hook
+  (`bash scripts/install_hooks.sh` once per machine). The guard lives in
+  `scripts/check_secrets.sh` + `scripts/secret_patterns.txt`.
+* Move sensitive artifacts between machines with `scripts/vault.sh pack` ->
+  encrypted archive -> `scp` over the LAN -> `vault.sh unpack`. Never through a public
+  repo.
+* Mask credentials in anything shown to the user (the local key is masked in
+  `tools/cloud_dump.py` stdout).
 * Keep `uv run pytest -q` green.
 * Record every new fact with its provenance in `docs/RE.md` ("captured on VR3125" vs.
   "inherited from XU3100 work").
+* Append a line to `docs/JOURNAL.md` after each step; it is the fastest way for the next
+  session to know where things stand.
+
+## 8. Seamless phone <-> PC switching (what was built for this)
+
+| Need | Tool |
+|---|---|
+| one command per step | `Makefile` (`make help`) |
+| run the app's traffic through the PC | `scripts/capture.sh` (mitmproxy + DP15 decoder) |
+| make the Android app trust the mitm CA | `scripts/resign_apk.sh` (apktool + network security config + re-sign) |
+| send real commands to the robot from any machine | `uv run python -m popelka.replay status|room|zone|spot|fault|raw` |
+| carry credentials/APKs/captures between machines safely | `scripts/vault.sh` (encrypted, LAN only) |
+| never commit a secret by accident | `scripts/install_hooks.sh` (pre-commit) + `scripts/check_secrets.sh --all` |
+| know where the work stands | `docs/JOURNAL.md` (tail) + `AGENTS.md` (auto-loaded) |
+
+Full loop, roles and hygiene rules: `docs/WORKFLOW.md`.
+
+## 9. Open items still waiting on the user
+
+1. Concept Home APK (`com.concept.www`) -> `make scan APK=...`
+2. Concept account credentials in `.env` -> `make cloud-dump`
+3. Robot LAN IP -> `make replay ARGS="status"`
+4. OK to re-sign the app with a mitm CA -> `make resign APK=... OUT=...`
+5. A known landmark for coordinate calibration, before any motion command.
