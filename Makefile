@@ -5,13 +5,14 @@ SHELL := /bin/bash
 PY := uv run python
 .DEFAULT_GOAL := help
 
-.PHONY: help setup test lint scan cloud-dump capture resign replay check-secrets audit vault-push vault-pull push journal
+.PHONY: help setup test lint scan cloud-dump capture resign replay check-secrets audit hooks vault-push vault-pull push journal
 
 help: ## show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
-setup: ## install the toolchain (Linux PC: jadx, mitmproxy, adb, tshark)
+setup: ## install the toolchain (Linux PC: jadx, mitmproxy, adb, tshark) + leak guard
 	@bash scripts/setup_linux.sh
+	@bash scripts/install_hooks.sh
 
 test: ## run the test suite
 	@uv run pytest -q
@@ -33,6 +34,9 @@ resign: ## re-sign an APK with the mitm CA so the app trusts it (APK=..., OUT=..
 
 replay: ## send a built command to the robot over the local socket
 	@$(PY) -m popelka.replay $(ARGS)
+
+hooks: ## install the secret-leak guard as a git pre-commit hook
+	@bash scripts/install_hooks.sh
 
 check-secrets: ## scan the staged diff for credentials
 	@bash scripts/check_secrets.sh
