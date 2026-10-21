@@ -1,5 +1,7 @@
 # Popelka
 
+[Popelka == Cinderella](https://en.wikipedia.org/wiki/Cinderella)
+
 ## About
 
 This project is to tinker with robotic vacuum cleaner **Concept VR3125**
