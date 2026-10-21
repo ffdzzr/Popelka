@@ -8,3 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+
+# secrets and captures
+.env
+data/
+*.apk
+flows.mitm
+captures/

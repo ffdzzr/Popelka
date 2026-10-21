@@ -83,3 +83,50 @@ uv run popelka map map.bin --out map.pgm
 * [`docs/RE.md`](docs/RE.md) - findings, protocol notes, and the step-by-step
   plan for your specific robot.
 * [`docs/ROADMAP.md`](docs/ROADMAP.md) - what to try next, in order.
+
+## Lab setup (Linux PC + Android phone)
+
+Division of labour: the **PC is the lab** (APK analysis, mitmproxy, Wireshark),
+the **phone is only the app client**, and any machine on the LAN (including a
+Termux box) can act as the direct robot client.
+
+```bash
+bash scripts/setup_linux.sh          # uv, mitmproxy, jadx/apktool hints, adb, tshark
+```
+
+### 1. Get the Concept Home APK (`com.concept.www`)
+
+On the phone: `adb shell pm path com.concept.www` then `adb pull <path> .`
+(or export it with "APK Extractor"). On the PC: grab it from APKMirror.
+
+### 2. Static analysis - find the Tuya app key/secret and DP names
+
+```bash
+python tools/apk_scan.py concept-home.apk --secrets-out data/app_secrets.json
+```
+
+### 3. Cloud access - dump the robot's real datapoint schema
+
+```bash
+export TUYA_USER=... TUYA_PASS=... TUYA_REGION=eu
+python tools/cloud_dump.py --out data/ --download-maps
+```
+
+The device list from the Tuya user API also yields the device's **local key**,
+which unlocks direct LAN control on TCP 6668 (no cloud, no app).
+
+### 4. Live capture - see what the app really sends
+
+```bash
+mitmdump -s tools/mitm_dp15.py --listen-host 0.0.0.0 --listen-port 8080
+# phone: Wi-Fi proxy -> PC:8080, install the mitm CA, then run a clean
+```
+
+`tools/mitm_dp15.py` prints and decodes every `command_trans` payload on the
+fly. If the app refuses the user CA (Android 7+ default), re-sign the APK with
+the mitm CA embedded - the script's README section explains it.
+
+## Security hygiene
+
+`.env`, `data/`, `*.apk` and captures are gitignored. Keep the Concept account
+password out of git; `tools/cloud_dump.py` reads it from the environment.
