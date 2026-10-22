@@ -67,6 +67,7 @@ tools/apk_scan.py        DEX string mining -> Tuya app key/secret, hosts, DP nam
 tools/cloud_dump.py      dump devices, live DPs, specs, map list + downloads
 tools/mitm_dp15.py       mitmproxy addon: decodes every command_trans payload live
 tools/decode_payloads.py decode a file of captured hex/base64 payloads
+tools/pcap_dp15.py       decode tcpdump captures of the phone<->robot TCP 6668 stream
 scripts/setup_linux.sh   PC toolchain setup
 scripts/resign_apk.sh    re-sign the app so it trusts mitm's CA (Android 7+ workaround)
 scripts/capture.sh       run mitmproxy with the DP15 decoder
@@ -78,6 +79,7 @@ docs/RE.md               protocol notes (see the provenance warning below)
 docs/ROADMAP.md          phased plan
 docs/HANDOFF.md          full session context: findings, open questions, next steps
 docs/WORKFLOW.md         phone <-> PC <-> Termux loop, secret hygiene rules
+docs/CAPTURE.md          the three interception points + capture procedure (read before Phase D)
 docs/JOURNAL.md          append-only log of what was actually done (read the tail!)
 ```
 

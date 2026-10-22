@@ -5,7 +5,7 @@ SHELL := /bin/bash
 PY := uv run python
 .DEFAULT_GOAL := help
 
-.PHONY: help setup start doctor test lint scan cloud-dump capture resign replay check-secrets audit hooks vault-push vault-pull push journal
+.PHONY: help setup start doctor test lint scan cloud-dump capture sniff decode-pcap resign replay check-secrets audit hooks vault-push vault-pull push journal
 
 help: ## show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -37,6 +37,15 @@ cloud-dump: ## dump devices, live DPs, specs and maps from the Tuya cloud
 
 capture: ## run mitmproxy with the DP15 decoder (PORT=8080)
 	@bash scripts/capture.sh $(PORT)
+
+sniff: ## capture phone<->robot LAN traffic (ROBOT=<ip>, IFACE=any)
+	@test -n "$(ROBOT)" || { echo "usage: make sniff ROBOT=192.168.1.50 [IFACE=wlan0]"; exit 1; }
+	@mkdir -p captures
+	sudo tcpdump -i $(or $(IFACE),any) -w captures/robot.pcap "host $(ROBOT) and port 6668"
+
+decode-pcap: ## decode a capture (PCAP=..., KEY=local_key)
+	@test -n "$(PCAP)" || { echo "usage: make decode-pcap PCAP=captures/robot.pcap KEY=<local_key>"; exit 1; }
+	@uv run python tools/pcap_dp15.py "$(PCAP)" $(if $(KEY),--key "$(KEY)")
 
 resign: ## re-sign an APK with the mitm CA so the app trusts it (APK=..., OUT=...)
 	@bash scripts/resign_apk.sh "$(APK)" "$(OUT)"

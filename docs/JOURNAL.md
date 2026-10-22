@@ -61,3 +61,19 @@ APK, `.env` credentials, robot IP, OK to re-sign the app.
 * `AGENTS.md` now opens with a SESSION START checklist (make start -> read HANDOFF +
   journal tail -> check git status), so a new session on any machine starts from
   verified state instead of guessing.
+
+## 2026-10-22 - session 4 (Termux) - capture the ground truth
+
+* Added `tools/pcap_dp15.py`: parses tcpdump pcaps, splits Tuya local-protocol
+  frames on TCP 6668, AES-decrypts protocol 3.3 payloads with the local key, and
+  decodes the AA frames inside. Protocol 3.4 is detected but not decrypted yet.
+  Tested with synthetic pcaps (17 tests pass).
+* Added `docs/CAPTURE.md`: the three interception points (app<->cloud,
+  phone<->robot TCP 6668, robot<->cloud) with pros/cons, the "block the robot's
+  internet and see if the app still works" LAN-mode test, capture procedure
+  (manual drive first), safety rules, and the capture -> document -> encode -> test
+  -> replay loop.
+* Added `make sniff` / `make decode-pcap`; `popelka/__init__.py` now imports
+  lz4-dependent modules lazily so the capture tools run in a minimal environment.
+* Provenance note restated: nothing has been measured on the VR3125 yet; every
+  protocol value is inherited (docs/RE.md).

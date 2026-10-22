@@ -85,6 +85,8 @@ uv run popelka map map.bin --out map.pgm
 * [`AGENTS.md`](AGENTS.md) - auto-loaded working notes for OpenCode/agents in this repo.
 * [`docs/HANDOFF.md`](docs/HANDOFF.md) - **session handover**: findings, open questions,
   what the user still has to provide, and the exact next commands.
+* [`docs/CAPTURE.md`](docs/CAPTURE.md) - the three interception points (app<->cloud,
+  phone<->robot, robot<->cloud), and which one to use for what.
 * [`docs/WORKFLOW.md`](docs/WORKFLOW.md) - the phone <-> PC <-> Termux loop and the
   secret-hygiene rules.
 * [`docs/JOURNAL.md`](docs/JOURNAL.md) - append-only log of what was done; read the tail
@@ -100,7 +102,9 @@ make help            # list every task
 make setup           # PC toolchain (mitmproxy, jadx, adb, tshark)
 make scan APK=concept-home.apk     # mine the APK for the Tuya app key + DP names
 make cloud-dump      # devices, live DPs, specs, maps  (needs .env)
-make capture         # mitmproxy with the DP15 decoder
+make capture         # mitmproxy with the DP15 decoder (wire 1)
+make sniff ROBOT=192.168.1.50      # tcpdump the phone<->robot socket (wire 2)
+make decode-pcap PCAP=... KEY=...  # decode a capture into AA frames
 make resign APK=...  # re-sign the app so it trusts mitm's CA
 make replay ARGS="status"          # talk to the robot over the local socket
 make check-secrets   # leak guard (also runs as a pre-commit hook)
