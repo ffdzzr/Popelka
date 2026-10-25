@@ -77,3 +77,31 @@ APK, `.env` credentials, robot IP, OK to re-sign the app.
   lz4-dependent modules lazily so the capture tools run in a minimal environment.
 * Provenance note restated: nothing has been measured on the VR3125 yet; every
   protocol value is inherited (docs/RE.md).
+
+## 2026-10-25 - session 5 (Termux) - voice packs: the R2-D2 route
+
+* Goal from the user: replace the robot's prompts with R2-D2-like sounds, starting
+  from the Concept Home app on this phone.
+* Phone recon: Termux (uid `u0_a411`) cannot list `/data/app` or `/sdcard/Android/data`,
+  and Android 11 package-visibility filtering hides the Concept package from
+  `pm list packages`. A known APK path *is* readable (base.apk is 0644), so
+  `adb shell pm path com.concept.www` + `adb pull` on the PC remains the way in.
+  More importantly: the voice clips live in the robot, not the APK.
+* Found the real mechanism: Tuya's `voice_data` DP with `encodeVoice0x34` /
+  `decodeVoice0x35`. Read the frame layout from `@ray-js/robot-protocol@1.0.6`
+  (AB-extended frame; pack id + ASCII MD5 + URL). The robot downloads a ZIP,
+  verifies the MD5 and installs it - no firmware patching.
+* Added `popelka.voice` (encode/decode 0x34/0x35, resyncing scanner), `popelka.droid`
+  (original astromech chirps: sweeps + vibrato + noise, stdlib only, deterministic
+  seeds), `popelka voice build|decode`, `popelka droid`, `replay voice` (with
+  `--dry-run`), `tools/voice_pack.py` (deterministic ZIP -> MD5 + DP value) and
+  `tools/droid_voice.py` (one chirp per prompt name, optional ffmpeg MP3).
+* `tools/pcap_dp15.py` now parses the DP JSON and base64-decodes raw DP values
+  before decoding AA *and* AB frames - without that it would never see a voice
+  install in a real capture.
+* Added `docs/VOICE.md` (byte table, worked example, the four unknowns, the
+  capture experiment, build/push/rollback) and `DP_VOICE_DATA = 162` as an explicit
+  hypothesis. 30 tests pass.
+* Unverified: the DP id, whether the firmware implements 0x34, accepted pack ids,
+  and the ZIP layout/audio format. Next: `make cloud-dump` for the real spec, then
+  one captured voice change for the official pack URL.

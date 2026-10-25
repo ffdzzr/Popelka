@@ -31,6 +31,10 @@ DP_TOTAL_COUNT = 30
 DP_TOTAL_TIME = 31
 DP_DP107 = 107
 DP_SENSOR_LIFE = 132
+#: Voice-pack install channel (Tuya `voice_data`, commands 0x34/0x35).
+#: The *id* is a hypothesis: Tuya docs name the DP but not its number, and the
+#: Tuya-based Eufy L50 uses 162 for the same job. Confirm from the cloud schema.
+DP_VOICE_DATA = 162
 
 
 @dataclass(frozen=True)
@@ -63,6 +67,7 @@ DP_TABLE: dict[int, DPInfo] = {
         DPInfo(DP_TOTAL_TIME, "total_time", "int", "Cumulative minutes"),
         DPInfo(DP_DP107, "dp_107", "int", "Unknown; grows slowly (lidar counter?)"),
         DPInfo(DP_SENSOR_LIFE, "sensor_life", "int", "Remaining sensor life (minutes)"),
+        DPInfo(DP_VOICE_DATA, "voice_data", "raw", "Voice pack install (0x34 id+md5+url, 0x35 progress); id unverified"),
     ]
 }
 

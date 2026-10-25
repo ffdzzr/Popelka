@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from . import aa, commands, dp, maps
+from . import aa, commands, dp, droid, maps, voice
 
 
 def _int(value: str) -> int:
@@ -93,6 +93,30 @@ def cmd_faults(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_voice(args: argparse.Namespace) -> int:
+    if args.action == "build":
+        request = voice.VoiceRequest(args.pack_id, args.md5, args.url)
+        frame = request.frame()
+        print(f"DP{args.dp_id} value ({len(frame)} bytes, hex):")
+        print(frame.hex())
+        print(voice.describe(frame))
+        print(
+            "send with: uv run python -m popelka.replay voice "
+            f"--pack-id {args.pack_id} --md5 {args.md5} --url {args.url} --dp {args.dp_id}"
+        )
+        return 0
+    data = voice.from_hex(args.hex)
+    print(voice.describe(data))
+    return 0
+
+
+def cmd_droid(args: argparse.Namespace) -> int:
+    samples = droid.phrase(args.seed, parts=args.parts)
+    path = droid.write_wav(args.out, samples)
+    print(f"wrote {path} ({droid.duration(samples):.2f}s, seed={args.seed})")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="popelka", description="Concept VR3125 protocol toolkit")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -121,6 +145,23 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("faults", help="show known fault codes")
     p.set_defaults(func=cmd_faults)
+
+    p = sub.add_parser("voice", help="voice-pack frames: build a 0x34 request or decode a capture")
+    voice_sub = p.add_subparsers(dest="action", required=True)
+    b = voice_sub.add_parser("build", help="build the voice_data DP value for a pack URL")
+    b.add_argument("--id", dest="pack_id", type=int, required=True, help="pack/language id (must be one the robot knows)")
+    b.add_argument("--md5", required=True, help="MD5 of the ZIP file, 32 hex chars")
+    b.add_argument("--url", required=True, help="HTTP(S) URL the robot will download")
+    b.add_argument("--dp", dest="dp_id", type=int, default=voice.DP_VOICE_DATA, help="voice_data DP id (default: hypothesised 162)")
+    d = voice_sub.add_parser("decode", help="decode a captured voice payload (hex)")
+    d.add_argument("hex")
+    p.set_defaults(func=cmd_voice)
+
+    p = sub.add_parser("droid", help="synthesise an original astromech-style chirp WAV")
+    p.add_argument("--out", default="droid.wav")
+    p.add_argument("--seed", type=int, default=1)
+    p.add_argument("--parts", type=int, help="number of chirps (default: 3-6 from the seed)")
+    p.set_defaults(func=cmd_droid)
 
     args = parser.parse_args(argv)
     return args.func(args)

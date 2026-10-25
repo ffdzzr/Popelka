@@ -1,27 +1,31 @@
-"""Extract and decode DP15 (`command_trans`) traffic from a packet capture.
+"""Extract and decode DP traffic from a packet capture.
 
 Captures the phone <-> robot **local** Tuya socket (TCP 6668), which is the
-cheapest interception point: no TLS, and the payloads are the exact binary
-commands (the same frames that travel through the cloud).
+cheapest interception point: no TLS, and the payloads are the exact datapoint
+writes - including `command_trans` (DP15, AA frames) and `voice_data`
+(DP162, AB frames).
 
     sudo tcpdump -i any -w captures/robot.pcap 'host 192.168.1.50 and port 6668'
     python tools/pcap_dp15.py captures/robot.pcap
     python tools/pcap_dp15.py captures/robot.pcap --key <local_key>
 
-Without ``--key`` it still prints the Tuya frame structure and any plaintext AA
-frames. With ``--key`` it AES-128-ECB-decrypts protocol 3.3 payloads and decodes
-the `command_trans` frames inside.
+Without ``--key`` it prints the Tuya frame structure. With ``--key`` it
+AES-128-ECB-decrypts protocol 3.3 payloads, parses the DP JSON and decodes both
+frame families inside (raw DP values are base64 on the wire).
 
 Protocol 3.4 (session-key handshake) is not decrypted yet - the tool reports it
 so a future session knows what it is looking at.
 
-Requires nothing beyond the stdlib for plaintext mode; ``cryptography`` (or
+Requires only the stdlib for plaintext mode; ``cryptography`` (or
 ``pycryptodome``) only for ``--key``.
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
+import json
+import string
 import struct
 import sys
 from dataclasses import dataclass, field
@@ -29,7 +33,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from popelka import aa  # noqa: E402
+from popelka import aa, voice  # noqa: E402
 
 TUYA_PREFIX = b"\x00\x00\x55\xaa"
 TUYA_SUFFIX = b"\x00\x00\xaa\x55"
@@ -83,7 +87,6 @@ def read_pcap(path: Path):
         off += 16
         pkt = raw[off : off + incl_len]
         off += incl_len
-        # ts_frac is usec unless the nano magic was used
         yield ts_sec + ts_frac / (1e9 if nano else 1e6), pkt
 
 
@@ -97,7 +100,7 @@ def parse_packet(pkt: bytes) -> tuple[str, str, int, int, bytes] | None:
     if ethertype == 0x0800:  # IPv4
         ip = pkt[offset:]
     elif ethertype == 0x86DD:  # IPv6
-        return None  # not needed for the local socket
+        return None
     elif pkt[0:2] in (b"\x00\x00", b"\x00\x04"):  # Linux cooked capture (tcpdump -i any)
         linktype = struct.unpack("!H", pkt[0:2])[0]
         offset = 16 if linktype == 0 else 20
@@ -115,7 +118,7 @@ def parse_packet(pkt: bytes) -> tuple[str, str, int, int, bytes] | None:
     total_len = struct.unpack("!H", ip[2:4])[0]
     src = ".".join(str(b) for b in ip[12:16])
     dst = ".".join(str(b) for b in ip[16:20])
-    tcp = ip[ihl : total_len]
+    tcp = ip[ihl:total_len]
     if len(tcp) < 20:
         return None
     sport, dport = struct.unpack("!HH", tcp[0:4])
@@ -167,10 +170,6 @@ def _aes_ecb_decrypt(data: bytes, key: bytes) -> bytes:
         )
 
 
-def looks_like_plaintext_aa(buf: bytes) -> bool:
-    return bool(aa.decode_frames(buf))
-
-
 def try_decrypt(payload: bytes, key: str) -> bytes | None:
     """Try the Tuya 3.3 payload layout: AES-128-ECB with local_key[8:24]."""
     if len(payload) < 16 or len(payload) % 16:
@@ -189,6 +188,68 @@ def try_decrypt(payload: bytes, key: str) -> bytes | None:
     return plain[16:] if len(plain) > 16 else plain
 
 
+def decode_dp_value(value) -> bytes | None:
+    """Raw DP values are base64 on the wire; panels show them as hex strings."""
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value)
+    if not isinstance(value, str) or not value:
+        return None
+    text = value.strip()
+    is_hex = len(text) % 2 == 0 and all(ch in string.hexdigits for ch in text)
+    if is_hex and not text.endswith("="):
+        try:
+            return bytes.fromhex(text)
+        except ValueError:
+            pass
+    try:
+        return base64.b64decode(text, validate=True)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def describe_frames(raw: bytes, indent: str = "        ") -> list[str]:
+    """Decode both frame families and fall back to a hex preview."""
+    lines: list[str] = []
+    aa_frames = aa.decode_frames(raw)
+    ab_frames = voice.decode_frames(raw)
+    for frame in aa_frames:
+        lines.append(f"{indent}AA {frame.name:<14} cmd=0x{frame.cmd:02X} payload={frame.payload.hex(' ')}")
+    for frame in ab_frames:
+        lines.append(f"{indent}AB cmd=0x{frame.cmd:02X} len={len(frame.data)} data={frame.data.hex(' ')}")
+    for request in voice.decode_requests(raw):
+        lines.append(f"{indent}   voice install: id={request.pack_id} md5={request.md5} url={request.url}")
+    for report in voice.decode_reports(raw):
+        lines.append(f"{indent}   voice report: {report.describe()}")
+    if not lines:
+        preview = raw[:32].hex(" ")
+        suffix = "..." if len(raw) > 32 else ""
+        lines.append(f"{indent}<no AA/AB frames> {preview}{suffix}")
+    return lines
+
+
+def describe_payload(body: bytes, indent: str = "      ") -> list[str]:
+    """Decode a decrypted local-protocol body: JSON DPs or bare frames."""
+    try:
+        obj = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        obj = None
+
+    if isinstance(obj, dict):
+        dps = obj.get("dps")
+        if not isinstance(dps, dict) and isinstance(obj.get("data"), dict):
+            dps = obj["data"].get("dps")
+        if isinstance(dps, dict):
+            lines: list[str] = []
+            for dp_id, value in dps.items():
+                raw = decode_dp_value(value)
+                size = f"{len(raw)}B" if raw is not None else "unparsed"
+                lines.append(f"{indent}DP{dp_id} ({size}):")
+                if raw is not None:
+                    lines.extend(describe_frames(raw, indent + "  "))
+            return lines
+    return describe_frames(body, indent)
+
+
 def describe_tuya(frame: dict, key: str | None) -> list[str]:
     lines: list[str] = []
     cmd = frame["cmd"]
@@ -204,21 +265,13 @@ def describe_tuya(frame: dict, key: str | None) -> list[str]:
             note = " (aes-3.3)"
         else:
             note = " (encrypted/unknown layout)"
-    frames = aa.decode_frames(body)
-    if frames:
-        lines.append(f"      payload{note}:")
-        for f in frames:
-            lines.append(
-                f"        {f.name:<14} cmd={f.cmd:#04x} payload={f.payload.hex(' ')}"
-            )
-    elif body is not payload:
-        hexed = body[:48].hex(" ")
-        lines.append(f"      payload{note} (no AA frames): {hexed}{'...' if len(body) > 48 else ''}")
+    lines.append(f"      payload{note}:")
+    lines.extend(describe_payload(body))
     return lines
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("pcap")
     ap.add_argument("--key", help="device local key (enables AES decryption)")
     ap.add_argument("--port", type=int, default=6668, help="local Tuya port (default 6668)")
@@ -234,10 +287,10 @@ def main() -> int:
         if args.port not in (sport, dport):
             continue
         packets += 1
-        key = (src, sport, dst, dport)
-        if key not in streams:
-            streams[key] = Segment(src, sport, dst, dport)
-        streams[key].data += payload
+        stream_key = (src, sport, dst, dport)
+        if stream_key not in streams:
+            streams[stream_key] = Segment(src, sport, dst, dport)
+        streams[stream_key].data += payload
 
     if not packets:
         print(f"no TCP/{args.port} packets found", file=sys.stderr)

@@ -5,7 +5,7 @@ SHELL := /bin/bash
 PY := uv run python
 .DEFAULT_GOAL := help
 
-.PHONY: help setup start doctor test lint scan cloud-dump capture sniff decode-pcap resign replay check-secrets audit hooks vault-push vault-pull push journal
+.PHONY: help setup start doctor test lint scan cloud-dump capture sniff decode-pcap resign replay voice droid check-secrets audit hooks vault-push vault-pull push journal
 
 help: ## show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -52,6 +52,13 @@ resign: ## re-sign an APK with the mitm CA so the app trusts it (APK=..., OUT=..
 
 replay: ## send a built command to the robot over the local socket
 	@$(PY) -m popelka.replay $(ARGS)
+
+voice: ## build a voice-pack install frame (DIR=pack ID=502 URL=http://ip/pack.zip, or ZIP=...)
+	@test -n "$(DIR)$(ZIP)" || { echo "usage: make voice DIR=pack ID=502 URL=http://192.168.1.10/pack.zip"; exit 1; }
+	@$(PY) tools/voice_pack.py $(if $(DIR),--dir "$(DIR)") $(if $(ZIP),--zip "$(ZIP)") $(if $(ID),--id $(ID)) $(if $(URL),--url "$(URL)")
+
+droid: ## synthesise an original R2-D2-style chirp (OUT=droid.wav SEED=1)
+	@uv run popelka droid --out $(or $(OUT),droid.wav) --seed $(or $(SEED),1)
 
 hooks: ## install the secret-leak guard as a git pre-commit hook
 	@bash scripts/install_hooks.sh

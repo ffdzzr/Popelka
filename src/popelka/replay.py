@@ -6,6 +6,7 @@
     uv run python -m popelka.replay spot --at 1,2
     uv run python -m popelka.replay fault          # clear a stuck/lidar fault
     uv run python -m popelka.replay raw AA00064D...
+    uv run python -m popelka.replay voice --pack-id 502 --md5 <md5> --url http://<pc>/pack.zip
 
 Connection details come from the environment or from ``data/devices.json``:
 
@@ -20,7 +21,7 @@ import os
 import sys
 from pathlib import Path
 
-from . import aa, commands, dp
+from . import aa, commands, dp, voice
 from .tuya import LocalDevice, TuyaError
 
 
@@ -93,14 +94,36 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("raw", help="send a raw DP15 payload (hex)")
     p.add_argument("payload")
 
+    p = sub.add_parser("voice", help="install a voice pack (writes the voice_data DP)")
+    p.add_argument("--pack-id", type=int, required=True, help="pack/language id the robot knows")
+    p.add_argument("--md5", required=True, help="MD5 of the ZIP (32 hex chars)")
+    p.add_argument("--url", required=True, help="HTTP(S) URL the robot downloads the ZIP from")
+    p.add_argument(
+        "--dp",
+        dest="dp_id",
+        type=int,
+        default=voice.DP_VOICE_DATA,
+        help=f"voice_data DP id (default {voice.DP_VOICE_DATA}, a hypothesis - verify first)",
+    )
+    p.add_argument("--dry-run", action="store_true", help="print the DP value, send nothing")
+
     args = parser.parse_args(argv)
 
     try:
-        device = load_device()
-    except SystemExit:
-        raise
+        if args.cmd == "voice":
+            request = voice.VoiceRequest(args.pack_id, args.md5, args.url)
+            payload = request.frame()
+            print(f"DP{args.dp_id} value ({len(payload)} bytes):")
+            print(payload.hex())
+            print(voice.describe(payload))
+            if args.dry_run:
+                return 0
+            device = load_device()
+            device.send_raw_dp(args.dp_id, payload)
+            print(f"sent - the robot should download {args.url}")
+            return 0
 
-    try:
+        device = load_device()
         if args.cmd == "status":
             return show_status(device)
 

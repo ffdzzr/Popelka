@@ -118,7 +118,36 @@ The header layout is not public, so `popelka.maps` infers it heuristically and
 reports every inference - **verify against the app's own map** before
 trusting it.
 
-## 5. Open questions for *this* robot
+## 5. Voice pack channel (`voice_data`, 0x34 / 0x35)
+
+*Provenance: Tuya developer docs + the published `@ray-js/robot-protocol@1.0.6`
+source (`dist/index.mjs`). **Not captured on this robot yet.***
+
+Tuya vacuums can download a voice pack: the app sends pack id + MD5 + URL, the
+robot fetches the ZIP itself, verifies the MD5 and installs it. No firmware
+patching involved. The frame is the *extended* (AB) family, a sibling of the AA
+frames above:
+
+```
+AB 00 | len:u32be | cmd:u8 | data | checksum:u8
+len = 1 + len(data)                 checksum = sum(cmd + data) & 0xFF
+```
+
+`cmd = 0x34` (app -> robot), data:
+
+```
+pack_id:u32be | len(md5):u8 | md5:ascii(32) | len(url):u32be | url:utf8
+```
+
+`cmd = 0x35` (robot -> app): `pack_id:u32be | status:u8 | progress:u8`.
+
+Unknowns on the VR3125: the DP id (the Eufy L50 uses 162 - a hypothesis here),
+whether the firmware implements 0x34 at all, accepted pack ids, and the ZIP
+layout/audio format. `docs/VOICE.md` has the experiment that resolves all four.
+The sibling Eufy L50 (also Tuya) uses the same idea with a base64-protobuf
+payload in DP162 instead, so the capture decides which encoding to implement.
+
+## 6. Open questions for *this* robot
 
 1. Are the `b1`/`b2` room bytes present on the VR3125, and what do they mean?
 2. Does the VR3125 use `mode=part` (room) as well, and are room IDs 0..N?
@@ -129,8 +158,11 @@ trusting it.
 5. What is the DP14 `path_data` payload, and is there a *local* (non-P2P)
    way to get the live path?
 6. Are the map files really LZ4 block with the same header on LDROBOT?
+7. Does the device spec expose `voice_data`, under which DP id, and does a
+   voice change in the app produce an AB `0x34` frame (Tuya) or a base64
+   protobuf (Eufy style)?
 
-## 6. Legal / safety
+## 7. Legal / safety
 
 * Keep your own firmware intact - all of this is read/write access over the
   documented device interface, no disassembly, no firmware patching.

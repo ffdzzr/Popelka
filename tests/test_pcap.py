@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import base64
 import importlib.util
+import json
 import struct
 import sys
 from pathlib import Path
 
-from popelka import aa, commands
+from popelka import aa, commands, voice
 
 TOOL = Path(__file__).resolve().parents[1] / "tools" / "pcap_dp15.py"
 
@@ -98,3 +100,31 @@ def test_frame_splitter_resyncs_on_garbage():
     frames = list(tool.tuya_frames(stream))
     assert len(frames) == 2
     assert all(f["cmd"] == 0x08 for f in frames)
+
+
+def test_json_dp15_value_is_base64_decoded():
+    """On the wire a raw DP is base64 inside the protocol JSON (unlike the panel's hex)."""
+    tool = load_tool()
+    payload = commands.wake()
+    body = json.dumps({"dps": {"15": base64.b64encode(payload).decode()}}).encode()
+    joined = "\n".join(tool.describe_payload(body))
+    assert "DP15" in joined
+    assert "wake" in joined
+
+
+def test_json_voice_dp_is_decoded_and_shows_the_url():
+    tool = load_tool()
+    frame = voice.VoiceRequest(502, "0" * 32, "http://192.168.1.10/pack.zip").frame()
+    body = json.dumps({"dps": {"162": base64.b64encode(frame).decode()}}).encode()
+    joined = "\n".join(tool.describe_payload(body))
+    assert "AB cmd=0x34" in joined
+    assert "voice install: id=502" in joined
+    assert "http://192.168.1.10/pack.zip" in joined
+
+
+def test_dp_value_accepts_hex_strings_too():
+    tool = load_tool()
+    payload = commands.fault_recovery()
+    body = json.dumps({"dps": {"15": payload.hex()}}).encode()
+    assert "fault_recovery" in "\n".join(tool.describe_payload(body))
+

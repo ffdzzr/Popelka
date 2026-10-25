@@ -57,7 +57,9 @@ uv pip install tinytuya
 | `popelka.commands` | Builders for wake, sync bundle, room/zone/spot commands, fault recovery |
 | `popelka.maps` | Decoder for the LZ4-compressed map files from the cloud |
 | `popelka.tuya` | Local (tinytuya) + cloud (IoT API) transports |
-| `popelka.cli` | `popelka frames|build|map|dps|faults` |
+| `popelka.voice` | Voice-pack channel (`voice_data` DP, 0x34 install / 0x35 progress) |
+| `popelka.droid` | Original astromech-style chirp synthesiser (stdlib only) |
+| `popelka.cli` | `popelka frames|build|map|dps|faults|voice|droid` |
 
 ## Quick examples
 
@@ -80,6 +82,13 @@ Decode a map file pulled from the cloud:
 uv run popelka map map.bin --out map.pgm
 ```
 
+Hear what a custom voice pack could sound like, and build the install frame:
+
+```bash
+uv run popelka droid --out droid.wav --seed 7
+uv run popelka voice build --id 502 --md5 <md5> --url http://192.168.1.10/pack.zip
+```
+
 ## Documentation
 
 * [`AGENTS.md`](AGENTS.md) - auto-loaded working notes for OpenCode/agents in this repo.
@@ -93,6 +102,8 @@ uv run popelka map map.bin --out map.pgm
   to pick up where the last session left off.
 * [`docs/RE.md`](docs/RE.md) - findings, protocol notes, and the step-by-step
   plan for your specific robot.
+* [`docs/VOICE.md`](docs/VOICE.md) - custom voice packs (R2-D2 chirps): the
+  0x34 frame, the unknowns, and the capture experiment that resolves them.
 * [`docs/ROADMAP.md`](docs/ROADMAP.md) - what to try next, in order.
 
 ## One command per step
@@ -107,6 +118,8 @@ make sniff ROBOT=192.168.1.50      # tcpdump the phone<->robot socket (wire 2)
 make decode-pcap PCAP=... KEY=...  # decode a capture into AA frames
 make resign APK=...  # re-sign the app so it trusts mitm's CA
 make replay ARGS="status"          # talk to the robot over the local socket
+make droid OUT=droid.wav            # synthesise an original R2-D2-style chirp
+make voice DIR=pack ID=502 URL=http://192.168.1.10/pack.zip   # pack -> MD5 + DP value
 make check-secrets   # leak guard (also runs as a pre-commit hook)
 make vault-push      # encrypted archive of sensitive artifacts
 make push MESSAGE="..."

@@ -63,6 +63,8 @@ dump settles it in one command. Everything else keys off that.
    relate to robot coordinates (origin, mirroring, rotation)?
 7. Are the room names in the map tail UTF-8, UTF-16 or GB18030?
 8. Does LDROBOT add its own opcodes beyond the Tuya reference set?
+9. Voice: does the device spec expose `voice_data`, under which DP id, and does a voice
+   change in the app produce an AB `0x34` frame (Tuya) or a base64 protobuf (Eufy style)?
 
 ## 4. What the user must provide
 
@@ -133,6 +135,16 @@ Home Assistant integration, own web UI, per-room named cleaning, "angry Austrian
 sound hacks (the user's own idea), telemetry dashboards, the anti-stuck watchdog using
 cmd `0x4C`, and finally the P2P protocol for the live path.
 
+### Phase G - Voice pack (docs/VOICE.md)
+
+The robot can download a voice pack (pack id + MD5 + URL, AB frame `0x34`), so custom
+R2-D2 prompts need no firmware patching. Order: (1) `make cloud-dump` and look for a
+`voice_data` DP -> firmware supports it, id confirmed; (2) capture one voice change in the
+app -> confirms the encoding and yields the official pack URL; (3) download that ZIP and
+record its layout/audio format in `docs/RE.md`; (4) rebuild it with `popelka.droid` chirps,
+serve on port 80, push with `make replay ARGS="voice ..."`. Rollback is selecting the
+official voice in the app.
+
 ## 6. Gotchas learned the hard way
 
 * `tinytuya` depends on `cryptography`, which has **no Android wheel** - on Termux use
@@ -189,3 +201,5 @@ Full loop, roles and hygiene rules: `docs/WORKFLOW.md`.
 3. Robot LAN IP -> `make replay ARGS="status"`
 4. OK to re-sign the app with a mitm CA -> `make resign APK=... OUT=...`
 5. A known landmark for coordinate calibration, before any motion command.
+6. A voice change performed in the app while `make sniff` runs -> confirms the voice DP
+   id/encoding and yields an official pack URL (see `docs/VOICE.md`).

@@ -62,12 +62,17 @@ src/popelka/maps.py      LZ4 map-file decoder (header inferred, inferences repor
 src/popelka/cloud.py     Tuya IoT login (grant_type=1 + signed v2.0), devices, DPs, maps
 src/popelka/tuya.py      local transport (tinytuya) + thin cloud client
 src/popelka/replay.py    send real commands to the robot (python -m popelka.replay ...)
-src/popelka/cli.py       popelka frames|build|map|dps|faults
+src/popelka/voice.py     voice-pack channel: AB frames 0x34 (install) / 0x35 (progress)
+src/popelka/droid.py     original astromech-style chirp synth (no copyrighted samples)
+src/popelka/cli.py       popelka frames|build|map|dps|faults|voice|droid
 tools/apk_scan.py        DEX string mining -> Tuya app key/secret, hosts, DP names
 tools/cloud_dump.py      dump devices, live DPs, specs, map list + downloads
+tools/voice_pack.py      deterministic pack ZIP -> MD5 + voice_data DP value
+tools/droid_voice.py     one chirp per prompt name, optional ffmpeg -> 16 kHz MP3
 tools/mitm_dp15.py       mitmproxy addon: decodes every command_trans payload live
 tools/decode_payloads.py decode a file of captured hex/base64 payloads
 tools/pcap_dp15.py       decode tcpdump captures of the phone<->robot TCP 6668 stream
+                         (parses the DP JSON, base64-decodes values, AA + AB frames)
 scripts/setup_linux.sh   PC toolchain setup
 scripts/resign_apk.sh    re-sign the app so it trusts mitm's CA (Android 7+ workaround)
 scripts/capture.sh       run mitmproxy with the DP15 decoder
@@ -80,6 +85,7 @@ docs/ROADMAP.md          phased plan
 docs/HANDOFF.md          full session context: findings, open questions, next steps
 docs/WORKFLOW.md         phone <-> PC <-> Termux loop, secret hygiene rules
 docs/CAPTURE.md          the three interception points + capture procedure (read before Phase D)
+docs/VOICE.md            custom voice pack: 0x34/0x35 frame, unknowns, experiment, rollback
 docs/JOURNAL.md          append-only log of what was actually done (read the tail!)
 ```
 

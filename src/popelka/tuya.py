@@ -106,6 +106,10 @@ class LocalDevice:
         """Write a raw DP15 payload (the binary protocol channel)."""
         self.set_dp(15, payload, raw=True)
 
+    def send_raw_dp(self, dp_id: int, payload: bytes) -> None:
+        """Write any raw datapoint (e.g. DP162 `voice_data`)."""
+        self.set_dp(dp_id, payload, raw=True)
+
     def execute_plan(self, plan: CommandPlan, delay: float = 0.25) -> None:
         """Run a command plan: write each DP15 payload, then DP1/DP4."""
         client = self._connect()

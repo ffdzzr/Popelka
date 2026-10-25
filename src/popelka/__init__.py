@@ -12,11 +12,11 @@ import importlib
 
 __version__ = "0.1.0"
 
-from . import aa, commands, dp  # noqa: F401
+from . import aa, commands, dp, droid, voice  # noqa: F401
 
 _LAZY = {"maps", "cloud", "tuya", "replay"}
 
-__all__ = ["aa", "commands", "dp", "cloud", "maps", "tuya", "replay"]
+__all__ = ["aa", "commands", "dp", "droid", "voice", "cloud", "maps", "tuya", "replay"]
 
 
 def __getattr__(name: str):
