@@ -19,3 +19,9 @@ vault/
 private/
 *.bin
 *.pgm
+
+# generated voice assets (droid chirps, assembled packs)
+*.wav
+*.mp3
+/sounds/
+/pack/
